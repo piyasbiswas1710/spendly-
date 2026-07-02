@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(& \"P:\\\\expense-tracker\\\\venv\\\\Scripts\\\\python.exe\" --version; & \"P:\\\\expense-tracker\\\\venv\\\\Scripts\\\\python.exe\" -m pip --version)"
-    ]
-  }
-}
