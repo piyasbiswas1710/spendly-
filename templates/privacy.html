@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="legal-page">
+    <div class="legal-inner">
+        <h1 class="legal-title">Privacy Policy</h1>
+        <p class="legal-updated">Last updated: July 2, 2026</p>
+
+        <p class="legal-intro">
+            Spendly is a personal expense tracking service. This Privacy
+            Policy explains what information we collect, how we use it, and
+            the choices you have. We believe in keeping things simple:
+            we only collect what we need to make the service work for you.
+        </p>
+
+        <h2 class="legal-heading">1. Data We Collect</h2>
+        <p>
+            When you create an account, we collect basic account
+            information such as your name and email address. When you use
+            Spendly, we store the expense records you choose to log —
+            including the amount, category, date, and any description you
+            provide.
+        </p>
+        <p>
+            We also collect standard technical information sent by your
+            browser, such as your IP address and the type of device you
+            are using, in order to keep the service secure and reliable.
+        </p>
+
+        <h2 class="legal-heading">2. How We Use Your Data</h2>
+        <p>
+            We use the data we collect solely to operate and improve
+            Spendly. Specifically, we use it to:
+        </p>
+        <ul class="legal-list">
+            <li>Authenticate you and keep your account secure.</li>
+            <li>Display your expense history, category summaries, and time-period views.</li>
+            <li>Persist your records across devices and sessions.</li>
+            <li>Diagnose issues and prevent abuse of the service.</li>
+        </ul>
+        <p>
+            We do not use your financial data for advertising, and we do
+            not sell or rent your personal information to third parties.
+        </p>
+
+        <h2 class="legal-heading">3. Data Storage</h2>
+        <p>
+            Your data is stored in secure databases accessible only to
+            authorised systems. We retain your expense records for as
+            long as your account is active. If you choose to delete your
+            account, your records will be removed from active storage
+            within a reasonable period, except where retention is required
+            by law.
+        </p>
+        <p>
+            You can review, update, or delete individual expenses at any
+            time from within the application.
+        </p>
+
+        <h2 class="legal-heading">4. Third Party Services</h2>
+        <p>
+            Spendly relies on a small number of trusted third parties to
+            operate — for example, hosting providers that run the
+            application and database, and email services that send you
+            account-related messages. These providers only receive the
+            information they need to perform their function and are
+            required to handle it securely.
+        </p>
+        <p>
+            We do not integrate advertising networks or analytics services
+            that track you across other sites.
+        </p>
+
+        <h2 class="legal-heading">5. Your Choices</h2>
+        <p>
+            You may access and update your account information at any
+            time. You may also delete individual expenses or close your
+            account entirely. If you have questions about your data or
+            wish to exercise any of these choices, please contact us using
+            the details below.
+        </p>
+
+        <h2 class="legal-heading">6. Contact Us</h2>
+        <p>
+            If you have any questions or concerns about this Privacy
+            Policy or how your data is handled, please reach out through
+            the contact details provided in the application. We will do
+            our best to respond promptly.
+        </p>
+
+        <div class="legal-back">
+            <a href="{{ url_for('landing') }}" class="btn-ghost">Back to home</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
