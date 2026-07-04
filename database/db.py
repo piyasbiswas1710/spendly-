@@ -117,3 +117,26 @@ def seed_db():
     )
     conn.commit()
     conn.close()
+
+
+def get_user_by_email(email):
+    """Return the user row with this email, or None if none exists."""
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE email = ?", (email,)
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def create_user(name, email, password):
+    """Hash the password, insert a new user, and return its new id."""
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+        (name, email, generate_password_hash(password)),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return new_id
