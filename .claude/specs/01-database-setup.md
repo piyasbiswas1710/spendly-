@@ -245,4 +245,4 @@ The implementation should allow SQLite to raise appropriate errors for:
 - [ ] Running `seed_db()` multiple times does not duplicate data.
 - [ ] Application starts successfully without errors.
 - [ ] SQLite foreign key enforcement is enabled and working.
-- [ ] All SQL statements use parameterized queries.
+- [ ] All SQL statements use parameterized queries. 
