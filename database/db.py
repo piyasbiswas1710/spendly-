@@ -12,7 +12,7 @@ import os
 import sqlite3
 from datetime import date
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Resolve the DB file to the project root regardless of the current working
 # directory. expense_tracker.db is gitignored.
@@ -140,3 +140,17 @@ def create_user(name, email, password):
     new_id = cursor.lastrowid
     conn.close()
     return new_id
+
+
+def verify_user(email, password):
+    """Return the user row if the email exists and the password matches.
+
+    Returns None when no user has that email or the password is wrong, so
+    callers cannot tell the two failure cases apart.
+    """
+    user = get_user_by_email(email)
+    if user is None:
+        return None
+    if not check_password_hash(user["password_hash"], password):
+        return None
+    return user
