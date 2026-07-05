@@ -214,6 +214,24 @@ def update_expense(expense_id, user_id, amount, category, date, description):
     return rowcount
 
 
+def delete_expense(expense_id, user_id):
+    """Delete an owned expense row.
+
+    The ownership clause (`AND user_id = ?`) means the delete affects at
+    most one row, and the function returns `cursor.rowcount` so the caller
+    can `abort(404)` on a miss — same pattern as `update_expense()`.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id),
+    )
+    conn.commit()
+    rowcount = cursor.rowcount
+    conn.close()
+    return rowcount
+
+
 def _format_amount(value):
     """Format a monetary value to exactly two decimal places for display.
 
