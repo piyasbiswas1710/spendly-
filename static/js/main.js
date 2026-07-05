@@ -50,3 +50,25 @@
         }
     });
 })();
+
+// ------------------------------------------------------------------ //
+// Date filter (profile page)                                          //
+// ------------------------------------------------------------------ //
+
+(function () {
+    const form = document.getElementById("date-filter-form");
+    const rangeSelect = document.getElementById("range");
+    const customFields = document.getElementById("custom-date-fields");
+    if (!form || !rangeSelect || !customFields) return;
+
+    function syncCustomFieldsVisibility() {
+        customFields.hidden = rangeSelect.value !== "custom";
+    }
+
+    rangeSelect.addEventListener("change", function () {
+        syncCustomFieldsVisibility();
+        if (rangeSelect.value !== "custom") {
+            form.submit();
+        }
+    });
+})();

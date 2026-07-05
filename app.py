@@ -13,6 +13,8 @@ from database.db import (
     get_recent_transactions,
     get_profile_stats,
     get_category_breakdown,
+    resolve_date_range,
+    VALID_RANGES,
 )
 
 app = Flask(__name__)
@@ -144,9 +146,21 @@ def profile():
         "member_since": member_since,
     }
 
-    stats = get_profile_stats(user_id)
-    transactions = get_recent_transactions(user_id)
-    categories = get_category_breakdown(user_id)
+    range_key = request.args.get("range", "all_time")
+    raw_start = request.args.get("start_date", "")
+    raw_end = request.args.get("end_date", "")
+    start_date, end_date = resolve_date_range(range_key, raw_start, raw_end)
+
+    stats = get_profile_stats(user_id, start_date, end_date)
+    transactions = get_recent_transactions(user_id, start_date=start_date, end_date=end_date)
+    categories = get_category_breakdown(user_id, start_date, end_date)
+
+    active_range = range_key if range_key in VALID_RANGES else "all_time"
+    filters = {
+        "range": active_range,
+        "start_date": raw_start if active_range == "custom" else (start_date or ""),
+        "end_date": raw_end if active_range == "custom" else (end_date or ""),
+    }
 
     return render_template(
         "profile.html",
@@ -154,6 +168,7 @@ def profile():
         stats=stats,
         transactions=transactions,
         categories=categories,
+        filters=filters,
     )
 
 
