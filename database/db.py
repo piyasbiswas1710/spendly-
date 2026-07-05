@@ -174,6 +174,46 @@ def create_expense(user_id, amount, category, date, description):
     return new_id
 
 
+def get_expense_by_id(expense_id, user_id):
+    """Return the expense row with this id owned by this user, or None.
+
+    The ownership clause (`AND user_id = ?`) is enforced in SQL so the
+    caller cannot tell the difference between "row does not exist" and
+    "row exists but belongs to another user" — both surface as `None`.
+    Used to (a) pre-populate the edit form on `GET` and (b) gate the
+    `POST` update on a real ownership check before any write happens.
+    """
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def update_expense(expense_id, user_id, amount, category, date, description):
+    """Update the editable fields of an owned expense row.
+
+    Sets `amount`, `category`, `date`, and `description` only — `id`,
+    `user_id`, and `created_at` are never touched. The ownership clause
+    (`AND user_id = ?`) means the update affects at most one row, and
+    the function returns `cursor.rowcount` so the caller can `abort(404)`
+    on a miss. Performs no validation — that responsibility lives in the
+    route, mirroring `create_expense()`.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+        "WHERE id = ? AND user_id = ?",
+        (amount, category, date, description, expense_id, user_id),
+    )
+    conn.commit()
+    rowcount = cursor.rowcount
+    conn.close()
+    return rowcount
+
+
 def _format_amount(value):
     """Format a monetary value to exactly two decimal places for display.
 
@@ -283,6 +323,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
         parsed = datetime.strptime(row["date"], "%Y-%m-%d")
         transactions.append(
             {
+                "id": row["id"],
                 "date": parsed.strftime("%d %b %Y"),
                 "description": row["description"],
                 "category": row["category"],

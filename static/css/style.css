@@ -967,6 +967,20 @@ a { color: inherit; text-decoration: none; }
     font-variant-numeric: tabular-nums;
 }
 
+.txn-actions {
+    text-align: right;
+}
+
+.txn-edit-link {
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.txn-edit-link:hover {
+    text-decoration: underline;
+}
+
 /* Category badges */
 
 .category-badge {
