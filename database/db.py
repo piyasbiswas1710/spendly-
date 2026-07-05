@@ -10,7 +10,7 @@ helpers used across the application:
 
 import os
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -176,17 +176,87 @@ def get_user_by_id(user_id):
     return user
 
 
-def get_recent_transactions(user_id, limit=10):
+def _date_range_clause(start_date, end_date):
+    """Build an optional ' AND date >= ? AND date <= ?' fragment.
+
+    Returns (sql_fragment, params_list). Either or both bounds may be None,
+    in which case that half of the clause (or the whole thing) is omitted.
+    Callers append sql_fragment after a `WHERE user_id = ?` clause and
+    extend their params with params_list.
+    """
+    fragment = ""
+    params = []
+    if start_date is not None:
+        fragment += " AND date >= ?"
+        params.append(start_date)
+    if end_date is not None:
+        fragment += " AND date <= ?"
+        params.append(end_date)
+    return fragment, params
+
+
+VALID_RANGES = {"this_month", "last_month", "last_30_days", "all_time", "custom"}
+
+
+def _parse_iso_date(value):
+    """Return a date object if value is a valid 'YYYY-MM-DD' string, else None."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def resolve_date_range(range_key, start_date=None, end_date=None):
+    """Resolve a preset/custom range key into concrete (start, end) bounds.
+
+    Returns a (start_date, end_date) tuple of 'YYYY-MM-DD' strings, or
+    (None, None) for 'all_time' and any unrecognized/invalid input. This is
+    the only function that performs date-range math; callers pass the
+    result straight into the query helpers below.
+    """
+    today = date.today()
+
+    if range_key == "this_month":
+        start = today.replace(day=1)
+        if today.month == 12:
+            first_of_next_month = today.replace(year=today.year + 1, month=1, day=1)
+        else:
+            first_of_next_month = today.replace(month=today.month + 1, day=1)
+        end = first_of_next_month - timedelta(days=1)
+        return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
+
+    if range_key == "last_month":
+        last_day_prev_month = today.replace(day=1) - timedelta(days=1)
+        first_day_prev_month = last_day_prev_month.replace(day=1)
+        return (
+            first_day_prev_month.strftime("%Y-%m-%d"),
+            last_day_prev_month.strftime("%Y-%m-%d"),
+        )
+
+    if range_key == "last_30_days":
+        start = today - timedelta(days=29)
+        return start.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d")
+
+    if range_key == "custom":
+        parsed_start = _parse_iso_date(start_date)
+        parsed_end = _parse_iso_date(end_date)
+        if parsed_start is None or parsed_end is None or parsed_start > parsed_end:
+            return None, None
+        return start_date, end_date
+
+    return None, None
+
+
+def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     """Return this user's most recent expenses as display-ready dicts."""
     conn = get_db()
+    clause, range_params = _date_range_clause(start_date, end_date)
     rows = conn.execute(
-        """
-        SELECT * FROM expenses
-        WHERE user_id = ?
-        ORDER BY date DESC, id DESC
-        LIMIT ?
-        """,
-        (user_id, limit),
+        "SELECT * FROM expenses WHERE user_id = ?" + clause +
+        " ORDER BY date DESC, id DESC LIMIT ?",
+        (user_id, *range_params, limit),
     ).fetchall()
     conn.close()
 
@@ -204,21 +274,18 @@ def get_recent_transactions(user_id, limit=10):
     return transactions
 
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start_date=None, end_date=None):
     """Return per-category totals and percent-of-total for this user.
 
-    Returns [] when the user has no expenses.
+    Returns [] when the user has no expenses in range.
     """
     conn = get_db()
+    clause, range_params = _date_range_clause(start_date, end_date)
     rows = conn.execute(
-        """
-        SELECT category, SUM(amount) AS total
-        FROM expenses
-        WHERE user_id = ?
-        GROUP BY category
-        ORDER BY total DESC, category ASC
-        """,
-        (user_id,),
+        "SELECT category, SUM(amount) AS total FROM expenses "
+        "WHERE user_id = ?" + clause +
+        " GROUP BY category ORDER BY total DESC, category ASC",
+        (user_id, *range_params),
     ).fetchall()
     conn.close()
 
@@ -239,15 +306,17 @@ def get_category_breakdown(user_id):
     return breakdown
 
 
-def get_profile_stats(user_id):
+def get_profile_stats(user_id, start_date=None, end_date=None):
     """Return total spent, transaction count, and top category for this user.
 
-    Returns zero-expense defaults when the user has no expenses.
+    Returns zero-expense defaults when the user has no expenses in range.
     """
     conn = get_db()
+    clause, range_params = _date_range_clause(start_date, end_date)
     row = conn.execute(
-        "SELECT SUM(amount) AS total, COUNT(*) AS count FROM expenses WHERE user_id = ?",
-        (user_id,),
+        "SELECT SUM(amount) AS total, COUNT(*) AS count FROM expenses "
+        "WHERE user_id = ?" + clause,
+        (user_id, *range_params),
     ).fetchone()
     conn.close()
 
@@ -255,7 +324,7 @@ def get_profile_stats(user_id):
     if transaction_count == 0:
         return {"total_spent": 0, "transaction_count": 0, "top_category": "—"}
 
-    breakdown = get_category_breakdown(user_id)
+    breakdown = get_category_breakdown(user_id, start_date, end_date)
     top_category = breakdown[0]["name"] if breakdown else "—"
 
     return {

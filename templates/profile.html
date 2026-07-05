@@ -32,9 +32,37 @@
         </div>
     </div>
 
+    <!-- Date filter -->
+    <div class="profile-card filter-card">
+        <form class="filter-form" method="GET" action="{{ url_for('profile') }}" id="date-filter-form">
+            <div class="form-group filter-field">
+                <label for="range">Date range</label>
+                <select class="form-input" id="range" name="range">
+                    <option value="all_time" {% if filters.range == 'all_time' %}selected{% endif %}>All time</option>
+                    <option value="this_month" {% if filters.range == 'this_month' %}selected{% endif %}>This month</option>
+                    <option value="last_month" {% if filters.range == 'last_month' %}selected{% endif %}>Last month</option>
+                    <option value="last_30_days" {% if filters.range == 'last_30_days' %}selected{% endif %}>Last 30 days</option>
+                    <option value="custom" {% if filters.range == 'custom' %}selected{% endif %}>Custom range</option>
+                </select>
+            </div>
+            <div class="filter-date-fields" id="custom-date-fields" {% if filters.range != 'custom' %}hidden{% endif %}>
+                <div class="form-group filter-field">
+                    <label for="start_date">From</label>
+                    <input type="date" class="form-input" id="start_date" name="start_date" value="{{ filters.start_date }}">
+                </div>
+                <div class="form-group filter-field">
+                    <label for="end_date">To</label>
+                    <input type="date" class="form-input" id="end_date" name="end_date" value="{{ filters.end_date }}">
+                </div>
+            </div>
+            <button type="submit" class="btn-submit filter-submit">Apply</button>
+        </form>
+    </div>
+
     <!-- Transaction history -->
     <div class="profile-card">
         <h2 class="profile-heading">Recent transactions</h2>
+        {% if transactions %}
         <div class="txn-scroll">
             <table class="txn-table">
                 <thead>
@@ -61,11 +89,15 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <p class="empty-state">No transactions found for this date range.</p>
+        {% endif %}
     </div>
 
     <!-- Category breakdown -->
     <div class="profile-card">
         <h2 class="profile-heading">Category breakdown</h2>
+        {% if categories %}
         <div class="breakdown-list">
             {% for category in categories %}
             <div class="breakdown-row">
@@ -78,6 +110,9 @@
             </div>
             {% endfor %}
         </div>
+        {% else %}
+        <p class="empty-state">No expenses to break down for this date range.</p>
+        {% endif %}
     </div>
 
 </section>
