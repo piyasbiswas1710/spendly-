@@ -1,3 +1,4 @@
+import os
 from datetime import date, datetime
 
 from flask import Flask, abort, render_template, request, redirect, url_for, session
@@ -25,7 +26,7 @@ from database.db import (
 app = Flask(__name__)
 # Required for signed session cookies. Fine for local development; replace with
 # a value loaded from the environment before deploying.
-app.secret_key = "dev-secret-key-change-in-production"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
 
 # ------------------------------------------------------------------ #
