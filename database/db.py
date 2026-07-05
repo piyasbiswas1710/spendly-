@@ -10,7 +10,7 @@ helpers used across the application:
 
 import os
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -154,3 +154,112 @@ def verify_user(email, password):
     if not check_password_hash(user["password_hash"], password):
         return None
     return user
+
+
+def _format_amount(value):
+    """Format a monetary value to exactly two decimal places for display.
+
+    SUM(amount) over SQLite REAL columns can accumulate float error (e.g.
+    717.9300000000001); rounding to a fixed-precision string is the only way
+    to guarantee the UI never shows that noise.
+    """
+    return f"{value:.2f}"
+
+
+def get_user_by_id(user_id):
+    """Return the user row with this id, or None if none exists."""
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def get_recent_transactions(user_id, limit=10):
+    """Return this user's most recent expenses as display-ready dicts."""
+    conn = get_db()
+    rows = conn.execute(
+        """
+        SELECT * FROM expenses
+        WHERE user_id = ?
+        ORDER BY date DESC, id DESC
+        LIMIT ?
+        """,
+        (user_id, limit),
+    ).fetchall()
+    conn.close()
+
+    transactions = []
+    for row in rows:
+        parsed = datetime.strptime(row["date"], "%Y-%m-%d")
+        transactions.append(
+            {
+                "date": parsed.strftime("%d %b %Y"),
+                "description": row["description"],
+                "category": row["category"],
+                "amount": _format_amount(row["amount"]),
+            }
+        )
+    return transactions
+
+
+def get_category_breakdown(user_id):
+    """Return per-category totals and percent-of-total for this user.
+
+    Returns [] when the user has no expenses.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """
+        SELECT category, SUM(amount) AS total
+        FROM expenses
+        WHERE user_id = ?
+        GROUP BY category
+        ORDER BY total DESC, category ASC
+        """,
+        (user_id,),
+    ).fetchall()
+    conn.close()
+
+    if not rows:
+        return []
+
+    grand_total = sum(row["total"] for row in rows)
+    breakdown = []
+    for row in rows:
+        percent = round(row["total"] / grand_total * 100) if grand_total else 0
+        breakdown.append(
+            {
+                "name": row["category"],
+                "amount": _format_amount(row["total"]),
+                "percent": percent,
+            }
+        )
+    return breakdown
+
+
+def get_profile_stats(user_id):
+    """Return total spent, transaction count, and top category for this user.
+
+    Returns zero-expense defaults when the user has no expenses.
+    """
+    conn = get_db()
+    row = conn.execute(
+        "SELECT SUM(amount) AS total, COUNT(*) AS count FROM expenses WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+
+    transaction_count = row["count"] or 0
+    if transaction_count == 0:
+        return {"total_spent": 0, "transaction_count": 0, "top_category": "—"}
+
+    breakdown = get_category_breakdown(user_id)
+    top_category = breakdown[0]["name"] if breakdown else "—"
+
+    return {
+        "total_spent": _format_amount(row["total"] or 0),
+        "transaction_count": transaction_count,
+        "top_category": top_category,
+    }

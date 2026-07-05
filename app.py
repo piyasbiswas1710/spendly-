@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Flask, render_template, request, redirect, url_for, session
 
 from database.db import (
@@ -7,6 +9,10 @@ from database.db import (
     get_user_by_email,
     create_user,
     verify_user,
+    get_user_by_id,
+    get_recent_transactions,
+    get_profile_stats,
+    get_category_breakdown,
 )
 
 app = Flask(__name__)
@@ -110,46 +116,37 @@ def logout():
     return redirect(url_for("landing"))
 
 
+def _user_initials(name):
+    parts = name.split()
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0][0].upper()
+    return (parts[0][0] + parts[-1][0]).upper()
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    # Step 4 builds the profile UI in isolation. All data below is hardcoded;
-    # Step 5 will replace it with real queries via database/db.py.
+    user_id = session["user_id"]
+    db_user = get_user_by_id(user_id)
+
+    member_since = datetime.strptime(
+        db_user["created_at"], "%Y-%m-%d %H:%M:%S"
+    ).strftime("%B %Y")
+
     user = {
-        "name": "Demo User",
-        "email": "demo@spendly.com",
-        "initials": "DU",
-        "member_since": "January 2026",
+        "name": db_user["name"],
+        "email": db_user["email"],
+        "initials": _user_initials(db_user["name"]),
+        "member_since": member_since,
     }
 
-    stats = {
-        "total_spent": 3949,
-        "transaction_count": 8,
-        "top_category": "Bills",
-    }
-
-    transactions = [
-        {"date": "21 Jul 2026", "description": "Dinner out", "category": "Food", "amount": 420},
-        {"date": "18 Jul 2026", "description": "Miscellaneous", "category": "Other", "amount": 150},
-        {"date": "15 Jul 2026", "description": "New shoes", "category": "Shopping", "amount": 999},
-        {"date": "12 Jul 2026", "description": "Movie tickets", "category": "Entertainment", "amount": 350},
-        {"date": "09 Jul 2026", "description": "Pharmacy", "category": "Health", "amount": 500},
-        {"date": "06 Jul 2026", "description": "Electricity bill", "category": "Bills", "amount": 1200},
-        {"date": "04 Jul 2026", "description": "Auto ride", "category": "Transport", "amount": 80},
-        {"date": "02 Jul 2026", "description": "Groceries", "category": "Food", "amount": 250},
-    ]
-
-    categories = [
-        {"name": "Bills", "amount": 1200, "percent": 30},
-        {"name": "Shopping", "amount": 999, "percent": 25},
-        {"name": "Food", "amount": 670, "percent": 17},
-        {"name": "Health", "amount": 500, "percent": 13},
-        {"name": "Entertainment", "amount": 350, "percent": 9},
-        {"name": "Other", "amount": 150, "percent": 4},
-        {"name": "Transport", "amount": 80, "percent": 2},
-    ]
+    stats = get_profile_stats(user_id)
+    transactions = get_recent_transactions(user_id)
+    categories = get_category_breakdown(user_id)
 
     return render_template(
         "profile.html",
