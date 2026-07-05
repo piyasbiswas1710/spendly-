@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Flask, render_template, request, redirect, url_for, session
 
@@ -15,6 +15,8 @@ from database.db import (
     get_category_breakdown,
     resolve_date_range,
     VALID_RANGES,
+    CATEGORIES,
+    create_expense,
 )
 
 app = Flask(__name__)
@@ -172,9 +174,50 @@ def profile():
     )
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    today = date.today().strftime("%Y-%m-%d")
+    context = {
+        "error": None,
+        "categories": CATEGORIES,
+        "today": today,
+        "form": {},
+    }
+
+    if request.method == "POST":
+        form = request.form
+        amount_str = form.get("amount", "").strip()
+        category = form.get("category", "").strip()
+        date_str = form.get("date", "").strip()
+        description = form.get("description", "").strip()
+
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            amount = None
+
+        if amount is None or amount <= 0:
+            context["error"] = "Please enter a valid amount greater than zero."
+        elif category not in CATEGORIES:
+            context["error"] = "Please choose a category."
+        else:
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                context["error"] = "Please enter a valid date."
+
+        if context["error"] is None:
+            create_expense(
+                session["user_id"], amount, category, date_str, description
+            )
+            return redirect(url_for("profile"))
+
+        context["form"] = form
+
+    return render_template("add_expense.html", **context)
 
 
 @app.route("/expenses/<int:id>/edit")

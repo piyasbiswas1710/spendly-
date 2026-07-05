@@ -156,6 +156,24 @@ def verify_user(email, password):
     return user
 
 
+def create_expense(user_id, amount, category, date, description):
+    """Insert a new expense row for this user and return its new id.
+
+    Performs no validation — the route is responsible for verifying the
+    inputs so this helper stays reusable for the edit flow.
+    """
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO expenses (user_id, amount, category, date, description) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (user_id, amount, category, date, description),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return new_id
+
+
 def _format_amount(value):
     """Format a monetary value to exactly two decimal places for display.
 
